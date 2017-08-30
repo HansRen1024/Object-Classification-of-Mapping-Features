@@ -37,7 +37,7 @@ transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape}) #data
 transformer.set_transpose('data', (2, 0, 1)) #改变图片维度顺序，(h, w, k) -> (k, h, w)
 transformer.set_mean('data', np.load(mean_file).mean(1).mean(1))
 transformer.set_raw_scale('data', 255)
-transformer.set_channel_swap('data', (2, 1, 0)) # RGB -> BGR
+#transformer.set_channel_swap('data', (2, 1, 0)) # RGB -> BGR，Opencv读取的图片通道已经是BGR的
 
 def contrastFeat(image):
     similarity = []
