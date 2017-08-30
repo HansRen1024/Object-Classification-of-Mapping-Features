@@ -15,11 +15,19 @@ import skimage
 import numpy as np
 import matplotlib.pyplot as plt
         
+conv_name = 'conv10'
+net_mode = '_squeezenet'
 prototxt='doc/deploy_squeezenet.prototxt'
 caffe_model='doc/squeezenet.caffemodel'
 mean_file='doc/mean_squeezenet.npy'
+
 caffe.set_mode_gpu()
 net = caffe.Net(prototxt,caffe_model,caffe.TEST)
+transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape}) #data blob 结构（n, k, h, w)
+transformer.set_transpose('data', (2, 0, 1)) #改变图片维度顺序，(h, w, k) -> (k, h, w)
+transformer.set_mean('data', np.load(mean_file).mean(1).mean(1))
+transformer.set_raw_scale('data', 255)
+
 for name,feature in net.blobs.items(): #查看各层特征规模
     print name + '\t' + str(feature.data.shape)
 
@@ -36,15 +44,9 @@ def show(data, padsize=1, padval=0):
     plt.imshow(data)
     plt.axis('off')
 
-def saveFeat(image):
+def saveFeat(image,num):
     global prob
     im = caffe.io.resize_image(image,(227,227,3))
-    transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape}) #data blob 结构（n, k, h, w)
-    transformer.set_transpose('data', (2, 0, 1)) #改变图片维度顺序，(h, w, k) -> (k, h, w)
-    transformer.set_mean('data', np.load(mean_file).mean(1).mean(1))
-    transformer.set_raw_scale('data', 255)
-#    transformer.set_channel_swap('data', (2, 1, 0))
-
     net.blobs['data'].data[...] = transformer.preprocess('data', im)
     net.forward()
 
@@ -54,47 +56,47 @@ def saveFeat(image):
 #    order = prob.argsort()[-1]
 #    print 'class:', labels[order], 'accuracy: ', prob[order]
 
-    conv1_data = net.blobs['conv10'].data[0] #提取特征
+    conv1_data = net.blobs[conv_name].data[0] #提取特征
+    conv1_data.tofile(claPath+conv_name+net_mode+'_%s.bin'%num)
+    print "saved",claPath+conv_name+net_mode+'_%s.bin'%num
+
+#    conv2_data = net.blobs['fire9/concat'].data[0]
+#    conv2_data.tofile(claPath+'fire9_concat'+net_mode+'_%s.bin'%num)
+#
+#    conv3_data = net.blobs['fire9/expand3x3'].data[0]
+#    conv3_data.tofile(claPath+'fire9_expand3x3'+net_mode+'_%s.bin'%num)
+#
+#    conv3_data = net.blobs['fire9/expand1x1'].data[0]
+#    conv3_data.tofile(claPath+'fire9_expand1x1'+net_mode+'_%s.bin'%num)
+
 #    np.savetxt(claPath+'feat.txt', conv1_data)
 #    np.save(claPath+'feat.npy', conv1_data)
-    conv1_data.tofile(claPath+'feat.bin')
-    show(conv1_data)
 
-#    conv1_data = net.blobs['fire9/concat'].data[0] #提取特征
-#    show(conv1_data)
-#
-#    conv1_data = net.blobs['fire9/expand3x3'].data[0] #提取特征
-#    show(conv1_data)
-#
-#    conv1_data = net.blobs['fire9/expand1x1'].data[0] #提取特征
-#    show(conv1_data)
-#
-#    conv1_data = net.blobs['fire9/squeeze1x1_fire9/relu_squeeze1x1_0_split_1'].data[0] #提取特征
-#    show(conv1_data)
-#
-#    conv1_data = net.blobs['fire9/squeeze1x1_fire9/relu_squeeze1x1_0_split_0'].data[0] #提取特征
-#    show(conv1_data)
-#
-#    conv1_data = net.blobs['fire9/squeeze1x1'].data[0] #提取特征
 #    show(conv1_data)
 
 c = cv2.VideoCapture(0)
+i = 0
 while 1:
     ret, image = c.read()
     cv2.rectangle(image,(117,37),(522,442),(0,255,0),2)
     cv2.imshow("aaa", image)
     key = cv2.waitKey(10)
     if key == ord(' '):
-        cla = str(raw_input("Please enter class name: "))
-        claPath = os.path.join(r'features/%s/' %cla)
-        if not os.path.exists(claPath):
-            os.makedirs(claPath)
-        else:
-            print "This class has been saved before"
-            os._exit(1)
+        if i == 0:
+            cla = str(raw_input("Please enter class name: "))
+            claPath = os.path.join(r'features/%s/' %cla)
+            if not os.path.exists(claPath):
+                os.makedirs(claPath)
+            else:
+                print "This class has been saved before"
+                os._exit(1)
         img = image[40:440, 120:520]
         img = skimage.img_as_float(image[40:440, 120:520]).astype(np.float32)
-        saveFeat(img)
+        saveFeat(img,i)
+        i += 1
+        if i == 3:
+            print "Next class."
+            i = 0
     elif key == 27:
         cv2.destroyAllWindows()
         break
