@@ -40,7 +40,6 @@ transformer.set_raw_scale('data', 255)
 #transformer.set_channel_swap('data', (2, 1, 0)) # RGB -> BGR，Opencv读取的图片通道已经是BGR的
 
 def contrastFeat(image):
-    similarity = []
     cla = []
     L2_list = []
     im = caffe.io.resize_image(image,(224,224,3))
@@ -65,10 +64,8 @@ def contrastFeat(image):
                         dis += pow(conv1_data[n]-feat[n],2)
                 L2_list.append(sqrt(dis))
                 cla.append(dirname)
-    for i in range(len(L2_list)):
-        similarity.append(L2_list[i]/sum(L2_list))
-    similarity = np.array(similarity)
-    order = similarity.argsort()[0]
+    L2_list = np.array(L2_list)
+    order = L2_list.argsort()[0]
     return int(cla[order])
 
 data = []
